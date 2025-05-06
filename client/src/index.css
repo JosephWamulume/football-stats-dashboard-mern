@@ -1,0 +1,40 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8f9fa;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Make active nav links more prominent */
+.nav-link.active {
+  font-weight: bold !important;
+  background-color: #38003c !important;
+  color: white !important;
+}
+
+/* Style container for consistent layout */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Add some bottom spacing for better readability */
+h1, h2, h3, h4, h5, h6 {
+  margin-bottom: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+}
