@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
+// Import memory cache utility
+const { CACHE_DURATION, getCache, setCache } = require('../utils/memoryCache');
+
 // Get all teams
 router.get('/', async (req, res) => {
   try {
@@ -20,8 +23,19 @@ router.get('/', async (req, res) => {
 router.get('/league/:leagueId', async (req, res) => {
   try {
     const { leagueId } = req.params;
-    console.log(`Fetching teams for league ${leagueId} from API...`);
+    console.log(`Fetching teams for league ${leagueId}`);
     
+    // Try to get from cache first
+    const cacheKey = `teams_league_${leagueId}`;
+    const cachedData = getCache(cacheKey);
+    
+    if (cachedData) {
+      console.log(`Using cached teams for league ${leagueId}`);
+      return res.json(cachedData);
+    }
+    
+    // If not in cache, fetch from API
+    console.log(`Teams for league ${leagueId} not in cache, fetching from API...`);
     const response = await axios.get(
       `https://api.football-data.org/v4/competitions/${leagueId}/teams`,
       {
@@ -31,27 +45,25 @@ router.get('/league/:leagueId', async (req, res) => {
       }
     );
     
-    const teams = response.data.teams || [];
-    console.log(`Successfully fetched ${teams.length} teams for league ${leagueId}`);
+    console.log(`Successfully fetched teams for league ${leagueId}`);
+    console.log(`Teams count: ${response.data.teams ? response.data.teams.length : 0}`);
+    
+    // Save to cache
+    setCache(cacheKey, response.data, CACHE_DURATION.TEAMS);
+    
     res.json(response.data);
   } catch (error) {
     console.error(`Error fetching teams for league ${req.params.leagueId}:`, error.message);
     
-    // If API call fails, provide sample data as fallback
-    const sampleTeams = {
-      teams: [
-        { id: 1, name: 'Arsenal', crest: 'https://crests.football-data.org/57.png', founded: 1886, venue: 'Emirates Stadium' },
-        { id: 2, name: 'Manchester United', crest: 'https://crests.football-data.org/66.png', founded: 1878, venue: 'Old Trafford' },
-        { id: 3, name: 'Chelsea', crest: 'https://crests.football-data.org/61.png', founded: 1905, venue: 'Stamford Bridge' },
-        { id: 4, name: 'Liverpool', crest: 'https://crests.football-data.org/64.png', founded: 1892, venue: 'Anfield' },
-        { id: 5, name: 'Manchester City', crest: 'https://crests.football-data.org/65.png', founded: 1880, venue: 'Etihad Stadium' },
-        { id: 6, name: 'Tottenham Hotspur', crest: 'https://crests.football-data.org/73.png', founded: 1882, venue: 'Tottenham Hotspur Stadium' },
-        { id: 7, name: 'Newcastle United', crest: 'https://crests.football-data.org/67.png', founded: 1892, venue: 'St. James Park' },
-        { id: 8, name: 'Aston Villa', crest: 'https://crests.football-data.org/58.png', founded: 1874, venue: 'Villa Park' }
-      ]
-    };
+    // Try to get from cache as fallback
+    const cachedData = getCache(`teams_league_${req.params.leagueId}`);
+    if (cachedData) {
+      console.log(`Using cached teams for league ${req.params.leagueId} after API error`);
+      return res.json(cachedData);
+    }
     
-    res.json(sampleTeams);
+    // Return error instead of fallback data to make issues more visible
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
 
@@ -59,8 +71,19 @@ router.get('/league/:leagueId', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`Fetching team ${id} from API...`);
+    console.log(`Fetching team details for ID: ${id}`);
     
+    // Try to get from cache first
+    const cacheKey = `team_${id}`;
+    const cachedData = getCache(cacheKey);
+    
+    if (cachedData) {
+      console.log(`Using cached data for team ${id}`);
+      return res.json(cachedData);
+    }
+    
+    // If not in cache, fetch from API
+    console.log(`Team ${id} not in cache, fetching from API...`);
     const response = await axios.get(
       `https://api.football-data.org/v4/teams/${id}`,
       {
@@ -70,34 +93,23 @@ router.get('/:id', async (req, res) => {
       }
     );
     
-    console.log(`Successfully fetched team ${id} data`);
+    console.log(`Successfully fetched team details for ${id}`);
+    
+    // Save to cache
+    setCache(cacheKey, response.data, CACHE_DURATION.TEAMS);
+    
     res.json(response.data);
   } catch (error) {
     console.error(`Error fetching team ${req.params.id}:`, error.message);
     
-    // If API call fails, provide sample data as fallback
-    const sampleTeam = {
-      id: parseInt(req.params.id),
-      name: 'Sample Team FC',
-      shortName: 'STFC',
-      tla: 'STF',
-      crest: 'https://via.placeholder.com/100?text=Team',
-      address: '123 Football St, Football City',
-      phone: '+44 1234 567890',
-      website: 'https://example.com',
-      email: 'info@sampleteam.com',
-      founded: 1950,
-      clubColors: 'Red / Blue',
-      venue: 'Sample Stadium',
-      squad: [
-        { id: 101, name: 'Player One', position: 'Goalkeeper', dateOfBirth: '1990-01-01', nationality: 'England', shirtNumber: 1 },
-        { id: 102, name: 'Player Two', position: 'Defender', dateOfBirth: '1992-02-02', nationality: 'Brazil', shirtNumber: 2 },
-        { id: 103, name: 'Player Three', position: 'Midfielder', dateOfBirth: '1994-03-03', nationality: 'France', shirtNumber: 8 },
-        { id: 104, name: 'Player Four', position: 'Attacker', dateOfBirth: '1996-04-04', nationality: 'Spain', shirtNumber: 9 }
-      ]
-    };
+    // Try to get from cache as fallback
+    const cachedData = getCache(`team_${req.params.id}`);
+    if (cachedData) {
+      console.log(`Using cached data for team ${req.params.id} after API error`);
+      return res.json(cachedData);
+    }
     
-    res.json(sampleTeam);
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
 
@@ -105,65 +117,56 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/matches', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, dateFrom, dateTo } = req.query;
-    console.log(`Fetching matches for team ${id} from API...`);
+    const status = req.query.status || 'SCHEDULED';
+    const limit = parseInt(req.query.limit || 10);
     
-    let url = `https://api.football-data.org/v4/teams/${id}/matches`;
-    const params = {};
+    console.log(`Fetching matches for team ${id}`);
     
-    if (status) params.status = status;
-    if (dateFrom) params.dateFrom = dateFrom;
-    if (dateTo) params.dateTo = dateTo;
+    // Create a cache key based on the parameters
+    const cacheKey = `team_matches_${id}_${status}_${limit}`;
+    const cachedData = getCache(cacheKey);
     
-    const response = await axios.get(url, {
-      headers: {
-        'X-Auth-Token': process.env.FOOTBALL_API_KEY
-      },
-      params
-    });
+    if (cachedData) {
+      console.log(`Using cached matches for team ${id}`);
+      return res.json(cachedData);
+    }
     
-    console.log(`Successfully fetched ${response.data.matches?.length || 0} matches for team ${id}`);
+    // If not in cache, fetch from API
+    console.log(`Matches for team ${id} not in cache, fetching from API...`);
+    
+    // Status can be SCHEDULED, LIVE, IN_PLAY, PAUSED, FINISHED, POSTPONED, SUSPENDED, CANCELLED
+    const response = await axios.get(
+      `https://api.football-data.org/v4/teams/${id}/matches`,
+      {
+        headers: {
+          'X-Auth-Token': process.env.FOOTBALL_API_KEY
+        },
+        params: {
+          status,
+          limit
+        }
+      }
+    );
+    
+    console.log(`Successfully fetched ${response.data.matches ? response.data.matches.length : 0} matches for team ${id}`);
+    
+    // Save to cache
+    setCache(cacheKey, response.data, CACHE_DURATION.MATCHES);
+    
     res.json(response.data);
   } catch (error) {
     console.error(`Error fetching matches for team ${req.params.id}:`, error.message);
     
-    // If API call fails, provide sample data as fallback
-    const today = new Date();
-    const lastWeek = new Date(today);
-    lastWeek.setDate(today.getDate() - 7);
-    const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7);
+    // Try to get from cache as fallback
+    const cacheKey = `team_matches_${req.params.id}_${req.query.status || 'SCHEDULED'}_${parseInt(req.query.limit || 10)}`;
+    const cachedData = getCache(cacheKey);
     
-    const sampleMatches = {
-      matches: [
-        { 
-          id: 301, 
-          utcDate: lastWeek.toISOString(), 
-          status: 'FINISHED', 
-          homeTeam: { id: parseInt(req.params.id), name: 'Sample Team FC' }, 
-          awayTeam: { id: 201, name: 'Opponent FC' },
-          score: { fullTime: { home: 2, away: 1 } }
-        },
-        { 
-          id: 302, 
-          utcDate: today.toISOString(), 
-          status: 'SCHEDULED', 
-          homeTeam: { id: 202, name: 'Another Team FC' }, 
-          awayTeam: { id: parseInt(req.params.id), name: 'Sample Team FC' },
-          score: { fullTime: { home: null, away: null } }
-        },
-        { 
-          id: 303, 
-          utcDate: nextWeek.toISOString(), 
-          status: 'SCHEDULED', 
-          homeTeam: { id: parseInt(req.params.id), name: 'Sample Team FC' }, 
-          awayTeam: { id: 203, name: 'Future Opponent FC' },
-          score: { fullTime: { home: null, away: null } }
-        }
-      ]
-    };
+    if (cachedData) {
+      console.log(`Using cached matches for team ${req.params.id} after API error`);
+      return res.json(cachedData);
+    }
     
-    res.json(sampleMatches);
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
 

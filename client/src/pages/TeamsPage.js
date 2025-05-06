@@ -1,147 +1,186 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const TeamsPage = () => {
-  const [teams, setTeams] = useState([]);
   const [leagues, setLeagues] = useState([]);
   const [selectedLeague, setSelectedLeague] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [teams, setTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingTeams, setLoadingTeams] = useState(false);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch available leagues for the dropdown
     const fetchLeagues = async () => {
       try {
-        // Get leagues from our backend API
+        // Fetch leagues from our backend API
         const response = await axios.get('/api/leagues');
-        setLeagues(response.data.competitions || []);
+        
+        // Set leagues from the API response
+        const fetchedLeagues = response.data.competitions || [];
+        setLeagues(fetchedLeagues);
+        
+        // If there are leagues, automatically select the first one
+        if (fetchedLeagues.length > 0) {
+          setSelectedLeague(fetchedLeagues[0].code || fetchedLeagues[0].id);
+        }
+        
+        setLoading(false);
       } catch (err) {
-        console.error('Error fetching leagues:', err);
+        console.error('Error fetching leagues:', err.message);
+        setError('Failed to fetch leagues. Please try again later.');
+        setLoading(false);
       }
     };
 
     fetchLeagues();
   }, []);
 
-  const fetchTeams = async (leagueId) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Get teams for the selected league from our backend API
-      const response = await axios.get(`/api/teams/league/${leagueId}`);
-      setTeams(response.data.teams || []);
-      setLoading(false);
-    } catch (err) {
-      setError('Failed to fetch teams. Please try again later.');
-      setLoading(false);
-      console.error(err);
-    }
+  useEffect(() => {
+    const fetchTeams = async () => {
+      if (!selectedLeague) return;
+      
+      try {
+        setLoadingTeams(true);
+        console.log(`Fetching teams for league: ${selectedLeague}`);
+        
+        // Call our backend API to get teams for the selected league
+        const response = await axios.get(`/api/teams/league/${selectedLeague}`);
+        
+        // Check if teams data exists in the response
+        const fetchedTeams = response.data.teams || [];
+        console.log(`Fetched ${fetchedTeams.length} teams for league ${selectedLeague}`);
+        
+        setTeams(fetchedTeams);
+        setLoadingTeams(false);
+      } catch (err) {
+        console.error(`Error fetching teams for league ${selectedLeague}:`, err.message);
+        setError(`Failed to fetch teams for league ${selectedLeague}. The API may have rate limits or the league code may not be valid.`);
+        setTeams([]);
+        setLoadingTeams(false);
+      }
+    };
+
+    fetchTeams();
+  }, [selectedLeague]);
+
+  const handleTeamClick = (teamId) => {
+    navigate(`/teams/${teamId}`);
   };
 
   const handleLeagueChange = (e) => {
-    const leagueId = e.target.value;
-    setSelectedLeague(leagueId);
-    
-    if (leagueId) {
-      fetchTeams(leagueId);
-    } else {
-      setTeams([]);
-    }
+    setSelectedLeague(e.target.value);
   };
+
+  if (loading) {
+    return (
+      <div className="text-center my-5">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <p className="mt-2">Loading leagues...</p>
+      </div>
+    );
+  }
+
+  if (error && !leagues.length) {
+    return (
+      <div className="alert alert-danger my-4" role="alert">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div>
-      <h2 className="mb-4">Football Teams</h2>
-      
-      <div className="card mb-4">
-        <div className="card-body">
-          <h5 className="card-title">Select a League</h5>
-          <p className="card-text">Choose a league to view its teams</p>
-          
-          <div className="row align-items-end">
-            <div className="col-md-6">
-              <label htmlFor="leagueSelect" className="form-label">League</label>
-              <select
-                id="leagueSelect"
-                className="form-select"
-                value={selectedLeague}
-                onChange={handleLeagueChange}
-              >
-                <option value="">-- Select a league --</option>
-                {leagues.map(league => (
-                  <option key={league.id || league.code} value={league.code || league.id}>
-                    {league.name} ({league.country || league.area?.name || 'Unknown'})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>Teams</h2>
+        <div className="d-flex align-items-center">
+          <label htmlFor="leagueSelect" className="form-label me-2 mb-0">
+            Select League:
+          </label>
+          <select
+            id="leagueSelect"
+            className="form-select"
+            value={selectedLeague}
+            onChange={handleLeagueChange}
+            style={{ width: 'auto' }}
+          >
+            {leagues.map((league) => (
+              <option key={league.id} value={league.code || league.id}>
+                {league.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {loading && (
+      {error && (
+        <div className="alert alert-warning mb-4" role="alert">
+          {error}
+        </div>
+      )}
+
+      {loadingTeams ? (
         <div className="text-center my-5">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
           <p className="mt-2">Loading teams...</p>
         </div>
-      )}
-
-      {error && (
-        <div className="alert alert-danger my-4" role="alert">
-          {error}
-        </div>
-      )}
-
-      {!loading && !error && teams.length > 0 && (
-        <div className="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
-          {teams.map(team => (
-            <div className="col" key={team.id}>
-              <div className="card h-100 team-card">
-                <div className="text-center pt-3">
-                  <img 
-                    src={team.crest || team.crestUrl} 
-                    alt={`${team.name} logo`} 
-                    className="card-img-top" 
-                    style={{ maxWidth: '100px', maxHeight: '100px', objectFit: 'contain' }}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://via.placeholder.com/100?text=No+Image';
-                    }}
-                  />
-                </div>
-                <div className="card-body">
-                  <h5 className="card-title">{team.name}</h5>
-                  <p className="card-text mb-1">
-                    <small><i className="fas fa-calendar me-2"></i>Founded: {team.founded || 'Unknown'}</small>
-                  </p>
-                  <p className="card-text mb-3">
-                    <small><i className="fas fa-map-marker-alt me-2"></i>{team.venue || team.address || 'Unknown'}</small>
-                  </p>
-                  <Link to={`/teams/${team.id}`} className="btn btn-primary">
-                    Team Details
-                  </Link>
-                </div>
-              </div>
+      ) : (
+        <>
+          {teams.length === 0 && !loadingTeams ? (
+            <div className="alert alert-info">
+              No teams found for this league. The API may have rate limits or the league may not have active teams.
             </div>
-          ))}
-        </div>
-      )}
-
-      {!loading && !error && selectedLeague && teams.length === 0 && (
-        <div className="alert alert-info">
-          No teams found for the selected league.
-        </div>
-      )}
-
-      {!loading && !error && !selectedLeague && (
-        <div className="text-center my-5">
-          <i className="fas fa-hand-point-up fa-3x mb-3 text-muted"></i>
-          <p className="text-muted">Please select a league from the dropdown above to view teams.</p>
-        </div>
+          ) : (
+            <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
+              {teams.map((team) => (
+                <div key={team.id} className="col">
+                  <div 
+                    className="card h-100 team-card" 
+                    onClick={() => handleTeamClick(team.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="text-center pt-3">
+                      <img
+                        src={team.crest}
+                        alt={`${team.name} logo`}
+                        className="card-img-top"
+                        style={{ height: '100px', width: 'auto', objectFit: 'contain' }}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://via.placeholder.com/100?text=Team';
+                        }}
+                      />
+                    </div>
+                    <div className="card-body">
+                      <h5 className="card-title text-center">{team.name}</h5>
+                      <ul className="list-group list-group-flush">
+                        <li className="list-group-item">
+                          <strong>Founded:</strong> {team.founded || 'Unknown'}
+                        </li>
+                        <li className="list-group-item">
+                          <strong>Stadium:</strong> {team.venue || 'Unknown'}
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="card-footer bg-transparent border-top-0 text-center">
+                      <Link 
+                        to={`/teams/${team.id}`} 
+                        className="btn btn-primary btn-sm"
+                      >
+                        View Details
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -2,12 +2,26 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
+// Import memory cache utility
+const { CACHE_DURATION, getCache, setCache } = require('../utils/memoryCache');
+
 // Get player by ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`Fetching player ${id} from API...`);
+    console.log(`Fetching player details for ID: ${id}`);
     
+    // Try to get from cache first
+    const cacheKey = `player_${id}`;
+    const cachedData = getCache(cacheKey);
+    
+    if (cachedData) {
+      console.log(`Using cached data for player ${id}`);
+      return res.json(cachedData);
+    }
+    
+    // If not in cache, fetch from API
+    console.log(`Player ${id} not in cache, fetching from API...`);
     const response = await axios.get(
       `https://api.football-data.org/v4/persons/${id}`,
       {
@@ -17,36 +31,23 @@ router.get('/:id', async (req, res) => {
       }
     );
     
-    console.log(`Successfully fetched player ${id} data`);
+    console.log(`Successfully fetched player details for ${id}`);
+    
+    // Save to cache
+    setCache(cacheKey, response.data, CACHE_DURATION.PLAYERS);
+    
     res.json(response.data);
   } catch (error) {
     console.error(`Error fetching player ${req.params.id}:`, error.message);
     
-    // If API call fails, provide sample data as fallback
-    const samplePlayer = {
-      id: parseInt(req.params.id),
-      name: `Sample Player ${req.params.id}`,
-      firstName: 'Sample',
-      lastName: `Player ${req.params.id}`,
-      dateOfBirth: '1995-06-15',
-      nationality: 'England',
-      position: 'Midfielder',
-      shirtNumber: 10,
-      currentTeam: {
-        id: 1,
-        name: 'Sample Team FC',
-        crest: 'https://via.placeholder.com/100?text=Team'
-      },
-      stats: {
-        appearances: 34,
-        goals: 12,
-        assists: 8,
-        yellowCards: 3,
-        redCards: 0
-      }
-    };
+    // Try to get from cache as fallback
+    const cachedData = getCache(`player_${req.params.id}`);
+    if (cachedData) {
+      console.log(`Using cached data for player ${req.params.id} after API error`);
+      return res.json(cachedData);
+    }
     
-    res.json(samplePlayer);
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
 
@@ -54,9 +55,22 @@ router.get('/:id', async (req, res) => {
 router.get('/team/:teamId', async (req, res) => {
   try {
     const { teamId } = req.params;
-    console.log(`Fetching players for team ${teamId} from API...`);
+    console.log(`Fetching players for team ID: ${teamId}`);
     
-    // We need to get the team details which include the squad
+    // Try to get from cache first
+    const cacheKey = `players_team_${teamId}`;
+    const cachedData = getCache(cacheKey);
+    
+    if (cachedData) {
+      console.log(`Using cached players for team ${teamId}`);
+      return res.json(cachedData);
+    }
+    
+    // If not in cache, fetch from API
+    console.log(`Players for team ${teamId} not in cache, fetching from API...`);
+    
+    // The Football Data API doesn't have a dedicated endpoint for getting all players by team
+    // So we fetch the team details which includes the squad
     const response = await axios.get(
       `https://api.football-data.org/v4/teams/${teamId}`,
       {
@@ -66,25 +80,31 @@ router.get('/team/:teamId', async (req, res) => {
       }
     );
     
-    // Extract just the squad information
-    const squad = response.data.squad || [];
-    console.log(`Successfully fetched ${squad.length} players for team ${teamId}`);
+    // Extract only the squad from the team data
+    const players = response.data.squad || [];
+    console.log(`Successfully fetched ${players.length} players for team ${teamId}`);
     
-    res.json(squad);
+    // Format the response
+    const result = { players };
+    
+    // Save to cache
+    setCache(cacheKey, result, CACHE_DURATION.PLAYERS);
+    
+    // Also cache the team data
+    setCache(`team_${teamId}`, response.data, CACHE_DURATION.TEAMS);
+    
+    res.json(result);
   } catch (error) {
     console.error(`Error fetching players for team ${req.params.teamId}:`, error.message);
     
-    // If API call fails, provide sample data as fallback
-    const sampleSquad = [
-      { id: 301, name: 'Goalkeeper One', position: 'Goalkeeper', dateOfBirth: '1990-01-15', nationality: 'Germany', shirtNumber: 1 },
-      { id: 302, name: 'Defender One', position: 'Defence', dateOfBirth: '1992-03-22', nationality: 'France', shirtNumber: 2 },
-      { id: 303, name: 'Defender Two', position: 'Defence', dateOfBirth: '1993-07-18', nationality: 'Brazil', shirtNumber: 3 },
-      { id: 304, name: 'Midfielder One', position: 'Midfield', dateOfBirth: '1995-05-10', nationality: 'Spain', shirtNumber: 8 },
-      { id: 305, name: 'Midfielder Two', position: 'Midfield', dateOfBirth: '1994-09-28', nationality: 'England', shirtNumber: 10 },
-      { id: 306, name: 'Forward One', position: 'Offence', dateOfBirth: '1996-04-07', nationality: 'Portugal', shirtNumber: 9 }
-    ];
+    // Try to get from cache as fallback
+    const cachedData = getCache(`players_team_${req.params.teamId}`);
+    if (cachedData) {
+      console.log(`Using cached players for team ${req.params.teamId} after API error`);
+      return res.json(cachedData);
+    }
     
-    res.json(sampleSquad);
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
 
