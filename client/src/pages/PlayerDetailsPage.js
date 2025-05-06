@@ -12,43 +12,30 @@ const PlayerDetailsPage = () => {
   useEffect(() => {
     const fetchPlayerDetails = async () => {
       try {
-        // In production, this would be a call to your backend API
-        // const response = await axios.get(`/api/players/${id}`);
+        setLoading(true);
+        console.log(`Fetching details for player ${id}...`);
         
-        // For development without the backend ready, we'll use sample data
-        const samplePlayer = {
-          id: 101,
-          name: 'Bukayo Saka',
-          firstName: 'Bukayo',
-          lastName: 'Saka',
-          dateOfBirth: '2001-09-05',
-          nationality: 'England',
-          position: 'Attacker',
-          shirtNumber: 7,
-          currentTeam: {
-            id: 1,
-            name: 'Arsenal FC',
-            crest: 'https://crests.football-data.org/57.png'
-          }
+        // Fetch player data from our API
+        const response = await axios.get(`/api/players/${id}`);
+        setPlayer(response.data);
+        
+        // Extract stats from player data if available
+        // API might not provide detailed stats so we'll use sample data for now
+        // In a future enhancement, we could collect this data from multiple endpoint calls
+        const playerStats = {
+          appearances: response.data.appearances || 0,
+          goals: response.data.goals || 0,
+          assists: response.data.assists || 0,
+          yellowCards: response.data.yellowCards || 0,
+          redCards: response.data.redCards || 0,
+          minutesPlayed: response.data.minutesPlayed || 0,
+          passAccuracy: response.data.passAccuracy || 0,
+          shotsOnTarget: response.data.shotsOnTarget || 0
         };
         
-        const sampleStats = {
-          appearances: 38,
-          goals: 14,
-          assists: 11,
-          yellowCards: 2,
-          redCards: 0,
-          minutesPlayed: 3240,
-          passAccuracy: 82,
-          shotsOnTarget: 43
-        };
-        
-        setTimeout(() => {
-          setPlayer(samplePlayer);
-          setStats(sampleStats);
-          setLoading(false);
-        }, 500);
-        
+        setStats(playerStats);
+        setLoading(false);
+        console.log('Player data loaded successfully');
       } catch (err) {
         setError('Failed to fetch player details. Please try again later.');
         setLoading(false);
@@ -60,6 +47,8 @@ const PlayerDetailsPage = () => {
   }, [id]);
 
   const calculateAge = (dateOfBirth) => {
+    if (!dateOfBirth) return 'Unknown';
+    
     const today = new Date();
     const birthDate = new Date(dateOfBirth);
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -89,6 +78,14 @@ const PlayerDetailsPage = () => {
     );
   }
 
+  if (!player) {
+    return (
+      <div className="alert alert-warning my-4">
+        Player information not found. The player may not exist or there was an error retrieving the data.
+      </div>
+    );
+  }
+
   return (
     <div>
       <Link to={`/teams/${player?.currentTeam?.id}`} className="btn btn-outline-secondary mb-4">
@@ -101,32 +98,42 @@ const PlayerDetailsPage = () => {
             <div className="card-body">
               <div className="row">
                 <div className="col-md-4 text-center mb-3 mb-md-0">
-                  {/* Placeholder for player image - in a real app, you'd use an actual player photo */}
+                  {/* Player image or placeholder */}
                   <div className="bg-light rounded d-inline-flex align-items-center justify-content-center mb-3" style={{width: "200px", height: "200px"}}>
-                    <span className="display-1 text-secondary">{player.shirtNumber}</span>
+                    {player.shirtNumber ? (
+                      <span className="display-1 text-secondary">{player.shirtNumber}</span>
+                    ) : (
+                      <i className="fas fa-user-alt fa-5x text-secondary"></i>
+                    )}
                   </div>
                   <h3>{player.name}</h3>
-                  <div className="d-flex align-items-center justify-content-center">
-                    <img 
-                      src={player.currentTeam.crest} 
-                      alt={`${player.currentTeam.name} crest`} 
-                      style={{height: "30px", marginRight: "10px"}}
-                    />
-                    <span>{player.currentTeam.name}</span>
-                  </div>
+                  {player.currentTeam && (
+                    <div className="d-flex align-items-center justify-content-center">
+                      <img 
+                        src={player.currentTeam.crest} 
+                        alt={`${player.currentTeam.name} crest`} 
+                        style={{height: "30px", marginRight: "10px"}}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://via.placeholder.com/30?text=Team';
+                        }}
+                      />
+                      <span>{player.currentTeam.name}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="col-md-8">
                   <h2 className="mb-3">Player Profile</h2>
                   <div className="row">
                     <div className="col-md-6">
-                      <p><strong>Full Name:</strong> {player.firstName} {player.lastName}</p>
-                      <p><strong>Date of Birth:</strong> {new Date(player.dateOfBirth).toLocaleDateString()} ({calculateAge(player.dateOfBirth)} years)</p>
-                      <p><strong>Nationality:</strong> {player.nationality}</p>
+                      <p><strong>Full Name:</strong> {player.firstName ? `${player.firstName} ${player.lastName || ''}` : player.name}</p>
+                      <p><strong>Date of Birth:</strong> {player.dateOfBirth ? new Date(player.dateOfBirth).toLocaleDateString() : 'Unknown'} {player.dateOfBirth ? `(${calculateAge(player.dateOfBirth)} years)` : ''}</p>
+                      <p><strong>Nationality:</strong> {player.nationality || 'Unknown'}</p>
                     </div>
                     <div className="col-md-6">
-                      <p><strong>Position:</strong> {player.position}</p>
-                      <p><strong>Shirt Number:</strong> {player.shirtNumber}</p>
-                      <p><strong>Current Team:</strong> {player.currentTeam.name}</p>
+                      <p><strong>Position:</strong> {player.position || 'Unknown'}</p>
+                      <p><strong>Shirt Number:</strong> {player.shirtNumber || 'Unknown'}</p>
+                      <p><strong>Current Team:</strong> {player.currentTeam?.name || 'Unknown'}</p>
                     </div>
                   </div>
                 </div>
@@ -202,7 +209,7 @@ const PlayerDetailsPage = () => {
                       </tr>
                       <tr>
                         <td>Goals per Match</td>
-                        <td>{(stats.goals / stats.appearances).toFixed(2)}</td>
+                        <td>{stats.appearances > 0 ? (stats.goals / stats.appearances).toFixed(2) : '0.00'}</td>
                       </tr>
                       <tr>
                         <td>Minutes per Goal</td>
@@ -221,8 +228,10 @@ const PlayerDetailsPage = () => {
             </div>
             <div className="card-body">
               <p className="text-muted">
-                This section would display performance charts for the player when connected to the API with real data.
-                Charts could visualize goals/assists over time, heatmaps of positions played, radar charts of skills, etc.
+                This section would display performance charts for the player when more detailed 
+                statistical data is available from the API. Future enhancements could include
+                visualizations of goals/assists over time, heatmaps of positions played, 
+                radar charts of skills, etc.
               </p>
             </div>
           </div>

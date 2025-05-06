@@ -10,27 +10,12 @@ const LeaguesPage = () => {
   useEffect(() => {
     const fetchLeagues = async () => {
       try {
-        // In a production app, this would call your backend API
-        // const response = await axios.get('/api/leagues');
+        // Call our backend API to get leagues data
+        const response = await axios.get('/api/leagues');
         
-        // For development without the backend ready, we'll use sample data
-        // This will be replaced with actual API calls when backend is set up
-        const sampleLeagues = [
-          { id: 'PL', name: 'Premier League', country: 'England', logo: 'https://crests.football-data.org/PL.png' },
-          { id: 'PD', name: 'La Liga', country: 'Spain', logo: 'https://crests.football-data.org/PD.png' },
-          { id: 'SA', name: 'Serie A', country: 'Italy', logo: 'https://crests.football-data.org/SA.png' },
-          { id: 'BL1', name: 'Bundesliga', country: 'Germany', logo: 'https://crests.football-data.org/BL1.png' },
-          { id: 'FL1', name: 'Ligue 1', country: 'France', logo: 'https://crests.football-data.org/FL1.png' },
-          { id: 'DED', name: 'Eredivisie', country: 'Netherlands', logo: 'https://crests.football-data.org/ED.png' },
-          { id: 'PPL', name: 'Primeira Liga', country: 'Portugal', logo: 'https://crests.football-data.org/PPL.png' },
-          { id: 'BSA', name: 'Brasileiro Série A', country: 'Brazil', logo: 'https://crests.football-data.org/BSA.png' },
-        ];
-        
-        setTimeout(() => {
-          setLeagues(sampleLeagues);
-          setLoading(false);
-        }, 500); // Simulate network delay
-        
+        // Set the leagues data from the API response
+        setLeagues(response.data.competitions || []);
+        setLoading(false);
       } catch (err) {
         setError('Failed to fetch leagues. Please try again later.');
         setLoading(false);
@@ -66,20 +51,24 @@ const LeaguesPage = () => {
       
       <div className="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
         {leagues.map(league => (
-          <div className="col" key={league.id}>
+          <div className="col" key={league.id || league.code}>
             <div className="card h-100">
               <div className="text-center pt-3">
                 <img 
-                  src={league.logo} 
+                  src={league.emblem || league.logo} 
                   alt={`${league.name} logo`} 
                   className="card-img-top" 
                   style={{ maxWidth: '100px', maxHeight: '100px', objectFit: 'contain' }}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://via.placeholder.com/100?text=No+Image';
+                  }}
                 />
               </div>
               <div className="card-body">
                 <h5 className="card-title">{league.name}</h5>
-                <p className="card-text"><i className="fas fa-globe me-2"></i>{league.country}</p>
-                <Link to={`/leagues/${league.id}`} className="btn btn-primary">
+                <p className="card-text"><i className="fas fa-globe me-2"></i>{league.country || league.area?.name || 'Unknown'}</p>
+                <Link to={`/leagues/${league.code || league.id}`} className="btn btn-primary">
                   View Standings
                 </Link>
               </div>
@@ -87,6 +76,12 @@ const LeaguesPage = () => {
           </div>
         ))}
       </div>
+      
+      {leagues.length === 0 && !loading && !error && (
+        <div className="alert alert-info my-4">
+          No leagues found. Please check your API connection or try again later.
+        </div>
+      )}
     </div>
   );
 };

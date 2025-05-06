@@ -13,19 +13,9 @@ const TeamsPage = () => {
     // Fetch available leagues for the dropdown
     const fetchLeagues = async () => {
       try {
-        // In production, this would call your backend API
-        // const response = await axios.get('/api/leagues');
-        
-        // For development without the backend ready, we'll use sample data
-        const sampleLeagues = [
-          { id: 'PL', name: 'Premier League', country: 'England' },
-          { id: 'PD', name: 'La Liga', country: 'Spain' },
-          { id: 'SA', name: 'Serie A', country: 'Italy' },
-          { id: 'BL1', name: 'Bundesliga', country: 'Germany' },
-          { id: 'FL1', name: 'Ligue 1', country: 'France' }
-        ];
-        
-        setLeagues(sampleLeagues);
+        // Get leagues from our backend API
+        const response = await axios.get('/api/leagues');
+        setLeagues(response.data.competitions || []);
       } catch (err) {
         console.error('Error fetching leagues:', err);
       }
@@ -39,26 +29,10 @@ const TeamsPage = () => {
     setError(null);
     
     try {
-      // In production, this would call your backend API
-      // const response = await axios.get(`/api/teams/league/${leagueId}`);
-      
-      // For development without the backend ready, we'll use sample data
-      const sampleTeams = [
-        { id: 1, name: 'Arsenal', crestUrl: 'https://crests.football-data.org/57.png', founded: 1886, venue: 'Emirates Stadium' },
-        { id: 2, name: 'Manchester United', crestUrl: 'https://crests.football-data.org/66.png', founded: 1878, venue: 'Old Trafford' },
-        { id: 3, name: 'Chelsea', crestUrl: 'https://crests.football-data.org/61.png', founded: 1905, venue: 'Stamford Bridge' },
-        { id: 4, name: 'Liverpool', crestUrl: 'https://crests.football-data.org/64.png', founded: 1892, venue: 'Anfield' },
-        { id: 5, name: 'Manchester City', crestUrl: 'https://crests.football-data.org/65.png', founded: 1880, venue: 'Etihad Stadium' },
-        { id: 6, name: 'Tottenham Hotspur', crestUrl: 'https://crests.football-data.org/73.png', founded: 1882, venue: 'Tottenham Hotspur Stadium' },
-        { id: 7, name: 'Newcastle United', crestUrl: 'https://crests.football-data.org/67.png', founded: 1892, venue: 'St. James Park' },
-        { id: 8, name: 'Aston Villa', crestUrl: 'https://crests.football-data.org/58.png', founded: 1874, venue: 'Villa Park' }
-      ];
-      
-      setTimeout(() => {
-        setTeams(sampleTeams);
-        setLoading(false);
-      }, 500);
-      
+      // Get teams for the selected league from our backend API
+      const response = await axios.get(`/api/teams/league/${leagueId}`);
+      setTeams(response.data.teams || []);
+      setLoading(false);
     } catch (err) {
       setError('Failed to fetch teams. Please try again later.');
       setLoading(false);
@@ -97,8 +71,8 @@ const TeamsPage = () => {
               >
                 <option value="">-- Select a league --</option>
                 {leagues.map(league => (
-                  <option key={league.id} value={league.id}>
-                    {league.name} ({league.country})
+                  <option key={league.id || league.code} value={league.code || league.id}>
+                    {league.name} ({league.country || league.area?.name || 'Unknown'})
                   </option>
                 ))}
               </select>
@@ -129,7 +103,7 @@ const TeamsPage = () => {
               <div className="card h-100 team-card">
                 <div className="text-center pt-3">
                   <img 
-                    src={team.crestUrl} 
+                    src={team.crest || team.crestUrl} 
                     alt={`${team.name} logo`} 
                     className="card-img-top" 
                     style={{ maxWidth: '100px', maxHeight: '100px', objectFit: 'contain' }}
@@ -142,10 +116,10 @@ const TeamsPage = () => {
                 <div className="card-body">
                   <h5 className="card-title">{team.name}</h5>
                   <p className="card-text mb-1">
-                    <small><i className="fas fa-calendar me-2"></i>Founded: {team.founded}</small>
+                    <small><i className="fas fa-calendar me-2"></i>Founded: {team.founded || 'Unknown'}</small>
                   </p>
                   <p className="card-text mb-3">
-                    <small><i className="fas fa-map-marker-alt me-2"></i>{team.venue}</small>
+                    <small><i className="fas fa-map-marker-alt me-2"></i>{team.venue || team.address || 'Unknown'}</small>
                   </p>
                   <Link to={`/teams/${team.id}`} className="btn btn-primary">
                     Team Details

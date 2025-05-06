@@ -14,51 +14,26 @@ const TeamDetailsPage = () => {
   useEffect(() => {
     const fetchTeamDetails = async () => {
       try {
-        // In production, these would be calls to your backend API
-        // const teamResponse = await axios.get(`/api/teams/${id}`);
-        // const playersResponse = await axios.get(`/api/players/team/${id}`);
-        // const matchesResponse = await axios.get(`/api/teams/${id}/matches`);
+        setLoading(true);
         
-        // For development without the backend ready, we'll use sample data
-        const sampleTeam = {
-          id: 1,
-          name: 'Arsenal FC',
-          shortName: 'Arsenal',
-          tla: 'ARS',
-          crestUrl: 'https://crests.football-data.org/57.png',
-          address: 'Highbury House, 75 Drayton Park London N5 1BU',
-          phone: '+44 (020) 76195003',
-          website: 'http://www.arsenal.com',
-          email: 'info@arsenal.co.uk',
-          founded: 1886,
-          clubColors: 'Red / White',
-          venue: 'Emirates Stadium',
-          lastUpdated: '2020-05-14T02:41:34Z'
-        };
+        // Fetch team details from our API
+        const teamResponse = await axios.get(`/api/teams/${id}`);
+        setTeam(teamResponse.data);
         
-        const samplePlayers = [
-          { id: 101, name: 'Bukayo Saka', position: 'Attacker', dateOfBirth: '2001-09-05', nationality: 'England', shirtNumber: 7 },
-          { id: 102, name: 'Martin Ødegaard', position: 'Midfielder', dateOfBirth: '1998-12-17', nationality: 'Norway', shirtNumber: 8 },
-          { id: 103, name: 'Gabriel Jesus', position: 'Attacker', dateOfBirth: '1997-04-03', nationality: 'Brazil', shirtNumber: 9 },
-          { id: 104, name: 'William Saliba', position: 'Defender', dateOfBirth: '2001-03-24', nationality: 'France', shirtNumber: 2 },
-          { id: 105, name: 'Aaron Ramsdale', position: 'Goalkeeper', dateOfBirth: '1998-05-14', nationality: 'England', shirtNumber: 1 },
-          { id: 106, name: 'Gabriel Martinelli', position: 'Attacker', dateOfBirth: '2001-06-18', nationality: 'Brazil', shirtNumber: 11 }
-        ];
+        // If the team API response includes squad, use it
+        if (teamResponse.data.squad && teamResponse.data.squad.length > 0) {
+          setPlayers(teamResponse.data.squad);
+        } else {
+          // Otherwise make a separate request for players
+          const playersResponse = await axios.get(`/api/players/team/${id}`);
+          setPlayers(playersResponse.data || []);
+        }
         
-        const sampleMatches = [
-          { id: 201, homeTeam: { id: 1, name: 'Arsenal FC' }, awayTeam: { id: 2, name: 'Manchester United FC' }, score: { home: 3, away: 1 }, status: 'FINISHED', utcDate: '2025-01-15T15:00:00Z' },
-          { id: 202, homeTeam: { id: 3, name: 'Liverpool FC' }, awayTeam: { id: 1, name: 'Arsenal FC' }, score: { home: 2, away: 2 }, status: 'FINISHED', utcDate: '2025-01-08T15:00:00Z' },
-          { id: 203, homeTeam: { id: 1, name: 'Arsenal FC' }, awayTeam: { id: 4, name: 'Chelsea FC' }, score: { home: 2, away: 0 }, status: 'FINISHED', utcDate: '2025-01-01T15:00:00Z' },
-          { id: 204, homeTeam: { id: 1, name: 'Arsenal FC' }, awayTeam: { id: 5, name: 'Manchester City FC' }, score: { }, status: 'SCHEDULED', utcDate: '2025-01-22T15:00:00Z' }
-        ];
+        // Fetch team matches (recent & upcoming)
+        const matchesResponse = await axios.get(`/api/teams/${id}/matches`);
+        setMatches(matchesResponse.data.matches || []);
         
-        setTimeout(() => {
-          setTeam(sampleTeam);
-          setPlayers(samplePlayers);
-          setMatches(sampleMatches);
-          setLoading(false);
-        }, 500);
-        
+        setLoading(false);
       } catch (err) {
         setError('Failed to fetch team details. Please try again later.');
         setLoading(false);
@@ -107,7 +82,7 @@ const TeamDetailsPage = () => {
               <div className="row">
                 <div className="col-md-3 text-center">
                   <img 
-                    src={team.crestUrl} 
+                    src={team.crest || team.crestUrl} 
                     alt={`${team.name} logo`} 
                     className="img-fluid mb-3" 
                     style={{ maxHeight: '150px' }}
@@ -121,16 +96,16 @@ const TeamDetailsPage = () => {
                   <h2 className="mb-3">{team.name}</h2>
                   <div className="row">
                     <div className="col-md-6">
-                      <p><strong>Short Name:</strong> {team.shortName}</p>
-                      <p><strong>Founded:</strong> {team.founded}</p>
-                      <p><strong>Stadium:</strong> {team.venue}</p>
-                      <p><strong>Club Colors:</strong> {team.clubColors}</p>
+                      <p><strong>Short Name:</strong> {team.shortName || team.tla || 'N/A'}</p>
+                      <p><strong>Founded:</strong> {team.founded || 'Unknown'}</p>
+                      <p><strong>Stadium:</strong> {team.venue || 'Unknown'}</p>
+                      <p><strong>Club Colors:</strong> {team.clubColors || 'Unknown'}</p>
                     </div>
                     <div className="col-md-6">
-                      <p><strong>Address:</strong> {team.address}</p>
-                      <p><strong>Website:</strong> <a href={team.website} target="_blank" rel="noopener noreferrer">{team.website}</a></p>
-                      <p><strong>Email:</strong> {team.email}</p>
-                      <p><strong>Phone:</strong> {team.phone}</p>
+                      <p><strong>Address:</strong> {team.address || 'Unknown'}</p>
+                      <p><strong>Website:</strong> {team.website ? <a href={team.website} target="_blank" rel="noopener noreferrer">{team.website}</a> : 'Unknown'}</p>
+                      <p><strong>Email:</strong> {team.email || 'Unknown'}</p>
+                      <p><strong>Phone:</strong> {team.phone || 'Unknown'}</p>
                     </div>
                   </div>
                 </div>
@@ -171,36 +146,40 @@ const TeamDetailsPage = () => {
                 <h4 className="mb-0">Squad</h4>
               </div>
               <div className="card-body">
-                <div className="table-responsive">
-                  <table className="table table-striped table-hover">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Name</th>
-                        <th>Position</th>
-                        <th>Nationality</th>
-                        <th>Date of Birth</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {players.map(player => (
-                        <tr key={player.id}>
-                          <td>{player.shirtNumber}</td>
-                          <td>{player.name}</td>
-                          <td>{player.position}</td>
-                          <td>{player.nationality}</td>
-                          <td>{new Date(player.dateOfBirth).toLocaleDateString()}</td>
-                          <td>
-                            <Link to={`/players/${player.id}`} className="btn btn-sm btn-outline-primary">
-                              Profile
-                            </Link>
-                          </td>
+                {players.length > 0 ? (
+                  <div className="table-responsive">
+                    <table className="table table-striped table-hover">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Name</th>
+                          <th>Position</th>
+                          <th>Nationality</th>
+                          <th>Date of Birth</th>
+                          <th></th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {players.map(player => (
+                          <tr key={player.id}>
+                            <td>{player.shirtNumber || '-'}</td>
+                            <td>{player.name}</td>
+                            <td>{player.position || 'Unknown'}</td>
+                            <td>{player.nationality}</td>
+                            <td>{player.dateOfBirth ? new Date(player.dateOfBirth).toLocaleDateString() : 'Unknown'}</td>
+                            <td>
+                              <Link to={`/players/${player.id}`} className="btn btn-sm btn-outline-primary">
+                                Profile
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-muted">No squad information available for this team.</p>
+                )}
               </div>
             </div>
           )}
@@ -211,35 +190,41 @@ const TeamDetailsPage = () => {
                 <h4 className="mb-0">Recent & Upcoming Matches</h4>
               </div>
               <div className="card-body">
-                <div className="list-group">
-                  {matches.map(match => (
-                    <div key={match.id} className="list-group-item">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div className="d-flex align-items-center">
-                          <div className={`badge ${match.status === 'FINISHED' ? 'bg-secondary' : 'bg-primary'} me-2`}>
-                            {match.status === 'FINISHED' ? 'FT' : 'SCHEDULED'}
+                {matches.length > 0 ? (
+                  <div className="list-group">
+                    {matches.map(match => (
+                      <div key={match.id} className="list-group-item">
+                        <div className="d-flex justify-content-between align-items-center">
+                          <div className="d-flex align-items-center">
+                            <div className={`badge ${match.status === 'FINISHED' ? 'bg-secondary' : 'bg-primary'} me-2`}>
+                              {match.status === 'FINISHED' ? 'FT' : 'SCHEDULED'}
+                            </div>
+                            <div>{formatDate(match.utcDate)}</div>
                           </div>
-                          <div>{formatDate(match.utcDate)}</div>
+                        </div>
+                        <div className="row align-items-center mt-2">
+                          <div className="col-5 text-end">
+                            <strong>{match.homeTeam.name}</strong>
+                          </div>
+                          <div className="col-2 text-center">
+                            {match.status === 'FINISHED' ? (
+                              <strong>
+                                {match.score.fullTime?.home ?? match.score.home} - {match.score.fullTime?.away ?? match.score.away}
+                              </strong>
+                            ) : (
+                              <span>vs</span>
+                            )}
+                          </div>
+                          <div className="col-5 text-start">
+                            <strong>{match.awayTeam.name}</strong>
+                          </div>
                         </div>
                       </div>
-                      <div className="row align-items-center mt-2">
-                        <div className="col-5 text-end">
-                          <strong>{match.homeTeam.name}</strong>
-                        </div>
-                        <div className="col-2 text-center">
-                          {match.status === 'FINISHED' ? (
-                            <strong>{match.score.home} - {match.score.away}</strong>
-                          ) : (
-                            <span>vs</span>
-                          )}
-                        </div>
-                        <div className="col-5 text-start">
-                          <strong>{match.awayTeam.name}</strong>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted">No match information available for this team.</p>
+                )}
               </div>
             </div>
           )}
@@ -252,8 +237,8 @@ const TeamDetailsPage = () => {
               <div className="card-body">
                 <p className="text-muted">
                   This section would display team statistics like win rate, goals scored/conceded, 
-                  possession percentages, etc. This would be implemented with charts when connected
-                  to the API with real data.
+                  possession percentages, etc. This would be implemented with charts when more
+                  statistical data is available from the API.
                 </p>
                 <div className="row">
                   <div className="col-md-6">
