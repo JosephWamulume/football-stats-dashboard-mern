@@ -1,13 +1,13 @@
 const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const path = require('path');
+const dotenv = require('dotenv');
 
 // Load environment variables
 dotenv.config();
 
-// Initialize express app
+// Create Express app
 const app = express();
 
 // Middleware
@@ -24,28 +24,29 @@ app.use('/api/leagues', leagueRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/players', playerRoutes);
 
-// Define PORT
-const PORT = process.env.PORT || 5000;
-
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/football-stats')
-  .then(() => {
-    console.log('MongoDB Connected...');
-  })
-  .catch(err => {
-    console.error('MongoDB Connection Error:', err);
-  });
-
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
+  // Set static folder
   app.use(express.static(path.join(__dirname, '../client/build')));
 
+  // Any route that is not an API route should be handled by React
   app.get('*', (req, res) => {
     res.sendFile(path.resolve(__dirname, '../client/build', 'index.html'));
   });
 }
 
+// Define port
+const PORT = process.env.PORT || 5000;
+
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
 });
+
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/football-stats')
+  .then(() => console.log('MongoDB Connected'))
+  .catch(err => {
+    console.error('MongoDB Connection Error:', err.message);
+    console.log('Continuing without MongoDB. Using in-memory cache only.');
+  });
