@@ -2,6 +2,8 @@
 
 A comprehensive football statistics dashboard built with the MERN stack (MongoDB, Express, React, Node.js) and integrated with the football-data.org API.
 
+> **Note:** This project is still a work-in-progress. Features are being continuously added and improved.
+
 ## Features
 
 - View football leagues from around the world
