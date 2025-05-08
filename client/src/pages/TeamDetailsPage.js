@@ -162,7 +162,7 @@ const TeamDetailsPage = () => {
                       <tbody>
                         {players.map(player => (
                           <tr key={player.id}>
-                            <td>{player.shirtNumber || '-'}</td>
+                            <td>{player.shirtNumber || player.number || '-'}</td>
                             <td>{player.name}</td>
                             <td>{player.position || 'Unknown'}</td>
                             <td>{player.nationality}</td>
@@ -235,29 +235,198 @@ const TeamDetailsPage = () => {
                 <h4 className="mb-0">Team Statistics</h4>
               </div>
               <div className="card-body">
-                <p className="text-muted">
-                  This section would display team statistics like win rate, goals scored/conceded, 
-                  possession percentages, etc. This would be implemented with charts when more
-                  statistical data is available from the API.
-                </p>
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="card">
-                      <div className="card-body">
-                        <h5 className="card-title">Performance Stats</h5>
-                        <p className="text-muted">Charts would go here</p>
+                {matches.length > 0 ? (
+                  <>
+                    <div className="row">
+                      <div className="col-md-6 mb-4">
+                        <div className="card h-100">
+                          <div className="card-body">
+                            <h5 className="card-title">Form (Last 5 Matches)</h5>
+                            <div className="d-flex justify-content-center mt-3">
+                              {(() => {
+                                // Extract last 5 matches that are FINISHED
+                                const lastMatches = matches
+                                  .filter(match => match.status === 'FINISHED')
+                                  .slice(0, 5);
+                                
+                                return lastMatches.map((match, index) => {
+                                  // Determine if team won, lost, or drew
+                                  const homeScore = match.score.fullTime?.home ?? match.score.home;
+                                  const awayScore = match.score.fullTime?.away ?? match.score.away;
+                                  let result;
+                                  let bgColor;
+                                  
+                                  if (match.homeTeam.id === parseInt(id)) {
+                                    if (homeScore > awayScore) {
+                                      result = 'W';
+                                      bgColor = 'bg-success';
+                                    } else if (homeScore < awayScore) {
+                                      result = 'L';
+                                      bgColor = 'bg-danger';
+                                    } else {
+                                      result = 'D';
+                                      bgColor = 'bg-warning';
+                                    }
+                                  } else {
+                                    if (homeScore < awayScore) {
+                                      result = 'W';
+                                      bgColor = 'bg-success';
+                                    } else if (homeScore > awayScore) {
+                                      result = 'L';
+                                      bgColor = 'bg-danger';
+                                    } else {
+                                      result = 'D';
+                                      bgColor = 'bg-warning';
+                                    }
+                                  }
+                                  
+                                  return (
+                                    <div 
+                                      key={index} 
+                                      className={`rounded-circle ${bgColor} text-white d-flex align-items-center justify-content-center mx-1`}
+                                      style={{ width: '40px', height: '40px' }}
+                                    >
+                                      {result}
+                                    </div>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="col-md-6 mb-4">
+                        <div className="card h-100">
+                          <div className="card-body">
+                            <h5 className="card-title">Match Results</h5>
+                            {(() => {
+                              // Calculate stats from finished matches
+                              const finishedMatches = matches.filter(match => match.status === 'FINISHED');
+                              let wins = 0, draws = 0, losses = 0;
+                              
+                              finishedMatches.forEach(match => {
+                                const homeScore = match.score.fullTime?.home ?? match.score.home;
+                                const awayScore = match.score.fullTime?.away ?? match.score.away;
+                                
+                                if (match.homeTeam.id === parseInt(id)) {
+                                  if (homeScore > awayScore) wins++;
+                                  else if (homeScore < awayScore) losses++;
+                                  else draws++;
+                                } else {
+                                  if (homeScore < awayScore) wins++;
+                                  else if (homeScore > awayScore) losses++;
+                                  else draws++;
+                                }
+                              });
+                              
+                              const totalMatches = wins + draws + losses;
+                              const winPercentage = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(1) : '0';
+                              
+                              return (
+                                <div className="mt-3">
+                                  <div className="d-flex justify-content-between mb-2">
+                                    <span>Wins:</span>
+                                    <strong>{wins}</strong>
+                                  </div>
+                                  <div className="d-flex justify-content-between mb-2">
+                                    <span>Draws:</span>
+                                    <strong>{draws}</strong>
+                                  </div>
+                                  <div className="d-flex justify-content-between mb-2">
+                                    <span>Losses:</span>
+                                    <strong>{losses}</strong>
+                                  </div>
+                                  <div className="d-flex justify-content-between mb-2">
+                                    <span>Win Rate:</span>
+                                    <strong>{winPercentage}%</strong>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="card">
-                      <div className="card-body">
-                        <h5 className="card-title">Results Summary</h5>
-                        <p className="text-muted">Summary stats would go here</p>
+                    
+                    <div className="row">
+                      <div className="col-md-12">
+                        <div className="card">
+                          <div className="card-body">
+                            <h5 className="card-title">Goals</h5>
+                            {(() => {
+                              // Calculate goals from finished matches
+                              const finishedMatches = matches.filter(match => match.status === 'FINISHED');
+                              let goalsScored = 0, goalsConceded = 0;
+                              
+                              finishedMatches.forEach(match => {
+                                const homeScore = match.score.fullTime?.home ?? match.score.home;
+                                const awayScore = match.score.fullTime?.away ?? match.score.away;
+                                
+                                if (match.homeTeam.id === parseInt(id)) {
+                                  goalsScored += homeScore || 0;
+                                  goalsConceded += awayScore || 0;
+                                } else {
+                                  goalsScored += awayScore || 0;
+                                  goalsConceded += homeScore || 0;
+                                }
+                              });
+                              
+                              const goalDifference = goalsScored - goalsConceded;
+                              const avgGoalsScored = finishedMatches.length > 0 ? (goalsScored / finishedMatches.length).toFixed(2) : '0';
+                              const avgGoalsConceded = finishedMatches.length > 0 ? (goalsConceded / finishedMatches.length).toFixed(2) : '0';
+                              
+                              return (
+                                <div className="row mt-3">
+                                  <div className="col-md-6">
+                                    <div className="d-flex justify-content-between mb-2">
+                                      <span>Goals Scored:</span>
+                                      <strong>{goalsScored}</strong>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                      <span>Goals Conceded:</span>
+                                      <strong>{goalsConceded}</strong>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                      <span>Goal Difference:</span>
+                                      <strong className={goalDifference > 0 ? 'text-success' : goalDifference < 0 ? 'text-danger' : ''}>
+                                        {goalDifference > 0 ? '+' : ''}{goalDifference}
+                                      </strong>
+                                    </div>
+                                  </div>
+                                  <div className="col-md-6">
+                                    <div className="d-flex justify-content-between mb-2">
+                                      <span>Avg. Goals Scored/Match:</span>
+                                      <strong>{avgGoalsScored}</strong>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                      <span>Avg. Goals Conceded/Match:</span>
+                                      <strong>{avgGoalsConceded}</strong>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                      <span>Clean Sheets:</span>
+                                      <strong>
+                                        {finishedMatches.filter(match => {
+                                          if (match.homeTeam.id === parseInt(id)) {
+                                            return (match.score.fullTime?.away ?? match.score.away) === 0;
+                                          } else {
+                                            return (match.score.fullTime?.home ?? match.score.home) === 0;
+                                          }
+                                        }).length}
+                                      </strong>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  <p className="text-muted">No statistics available for this team yet. Statistics are calculated from match data.</p>
+                )}
               </div>
             </div>
           )}

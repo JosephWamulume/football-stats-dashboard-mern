@@ -117,13 +117,14 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/matches', async (req, res) => {
   try {
     const { id } = req.params;
-    const status = req.query.status || 'SCHEDULED';
-    const limit = parseInt(req.query.limit || 10);
+    // Default to fetching both FINISHED and SCHEDULED matches
+    const status = req.query.status || '';
+    const limit = parseInt(req.query.limit || 50);
     
     console.log(`Fetching matches for team ${id}`);
     
     // Create a cache key based on the parameters
-    const cacheKey = `team_matches_${id}_${status}_${limit}`;
+    const cacheKey = `team_matches_${id}_${status || 'all'}_${limit}`;
     const cachedData = getCache(cacheKey);
     
     if (cachedData) {
@@ -158,7 +159,7 @@ router.get('/:id/matches', async (req, res) => {
     console.error(`Error fetching matches for team ${req.params.id}:`, error.message);
     
     // Try to get from cache as fallback
-    const cacheKey = `team_matches_${req.params.id}_${req.query.status || 'SCHEDULED'}_${parseInt(req.query.limit || 10)}`;
+    const cacheKey = `team_matches_${req.params.id}_${req.query.status || 'all'}_${parseInt(req.query.limit || 50)}`;
     const cachedData = getCache(cacheKey);
     
     if (cachedData) {
