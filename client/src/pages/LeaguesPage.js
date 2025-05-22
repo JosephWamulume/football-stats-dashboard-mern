@@ -1,47 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
+import { getErrorDetails } from '../utils/errorHandler';
 
 const LeaguesPage = () => {
   const [leagues, setLeagues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchLeagues = async () => {
-      try {
-        // Call our backend API to get leagues data
-        const response = await axios.get('/api/leagues');
-        
-        // Set the leagues data from the API response
-        setLeagues(response.data.competitions || []);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch leagues. Please try again later.');
-        setLoading(false);
-        console.error(err);
-      }
-    };
+  const fetchLeagues = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Call our backend API to get leagues data
+      const response = await axios.get('/api/leagues');
+      
+      // Set the leagues data from the API response
+      setLeagues(response.data.competitions || []);
+      setLoading(false);
+    } catch (err) {
+      const errorDetails = getErrorDetails(err, 'Failed to fetch leagues.');
+      setError(errorDetails);
+      setLoading(false);
+      console.error('League fetch error:', err);
+    }
+  };
 
+  useEffect(() => {
     fetchLeagues();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="text-center my-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        <p className="mt-2">Loading leagues...</p>
-      </div>
-    );
+  if (loading && leagues.length === 0) {
+    return <LoadingSpinner message="Loading leagues..." fullPage={true} />;
   }
 
-  if (error) {
+  if (error && leagues.length === 0) {
     return (
-      <div className="alert alert-danger my-4" role="alert">
-        {error}
-      </div>
+      <ErrorMessage 
+        message={error.message} 
+        errorCode={error.code} 
+        onRetry={error.canRetry ? fetchLeagues : undefined} 
+      />
     );
   }
 

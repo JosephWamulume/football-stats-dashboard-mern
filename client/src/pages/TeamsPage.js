@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
+import { getErrorDetails } from '../utils/errorHandler';
 
 const TeamsPage = () => {
   const [leagues, setLeagues] = useState([]);
@@ -11,58 +14,69 @@ const TeamsPage = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchLeagues = async () => {
-      try {
-        // Fetch leagues from our backend API
-        const response = await axios.get('/api/leagues');
-        
-        // Set leagues from the API response
-        const fetchedLeagues = response.data.competitions || [];
-        setLeagues(fetchedLeagues);
-        
-        // If there are leagues, automatically select the first one
-        if (fetchedLeagues.length > 0) {
-          setSelectedLeague(fetchedLeagues[0].code || fetchedLeagues[0].id);
-        }
-        
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching leagues:', err.message);
-        setError('Failed to fetch leagues. Please try again later.');
-        setLoading(false);
+  const fetchLeagues = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch leagues from our backend API
+      const response = await axios.get('/api/leagues');
+      
+      // Set leagues from the API response
+      const fetchedLeagues = response.data.competitions || [];
+      setLeagues(fetchedLeagues);
+      
+      // If there are leagues, automatically select the first one
+      if (fetchedLeagues.length > 0) {
+        setSelectedLeague(fetchedLeagues[0].code || fetchedLeagues[0].id);
       }
-    };
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching leagues:', err.message);
+      const errorDetails = getErrorDetails(err, 'Failed to fetch leagues.');
+      setError(errorDetails);
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchLeagues();
   }, []);
 
-  useEffect(() => {
-    const fetchTeams = async () => {
-      if (!selectedLeague) return;
+  const fetchTeams = async (leagueId = selectedLeague) => {
+    if (!leagueId) return;
+    
+    try {
+      setLoadingTeams(true);
+      setError(null);
+      console.log(`Fetching teams for league: ${leagueId}`);
       
-      try {
-        setLoadingTeams(true);
-        console.log(`Fetching teams for league: ${selectedLeague}`);
-        
-        // Call our backend API to get teams for the selected league
-        const response = await axios.get(`/api/teams/league/${selectedLeague}`);
-        
-        // Check if teams data exists in the response
-        const fetchedTeams = response.data.teams || [];
-        console.log(`Fetched ${fetchedTeams.length} teams for league ${selectedLeague}`);
-        
-        setTeams(fetchedTeams);
-        setLoadingTeams(false);
-      } catch (err) {
-        console.error(`Error fetching teams for league ${selectedLeague}:`, err.message);
-        setError(`Failed to fetch teams for league ${selectedLeague}. The API may have rate limits or the league code may not be valid.`);
-        setTeams([]);
-        setLoadingTeams(false);
-      }
-    };
+      // Call our backend API to get teams for the selected league
+      const response = await axios.get(`/api/teams/league/${leagueId}`);
+      
+      // Check if teams data exists in the response
+      const fetchedTeams = response.data.teams || [];
+      console.log(`Fetched ${fetchedTeams.length} teams for league ${leagueId}`);
+      
+      setTeams(fetchedTeams);
+      setLoadingTeams(false);
+    } catch (err) {
+      console.error(`Error fetching teams for league ${leagueId}:`, err.message);
+      const errorDetails = getErrorDetails(
+        err, 
+        `Failed to fetch teams for league ${leagueId}. The API may have rate limits or the league code may not be valid.`
+      );
+      setError(errorDetails);
+      setTeams([]);
+      setLoadingTeams(false);
+    }
+  };
 
-    fetchTeams();
+  useEffect(() => {
+    if (selectedLeague) {
+      fetchTeams(selectedLeague);
+    }
   }, [selectedLeague]);
 
   const handleTeamClick = (teamId) => {
@@ -73,22 +87,17 @@ const TeamsPage = () => {
     setSelectedLeague(e.target.value);
   };
 
-  if (loading) {
-    return (
-      <div className="text-center my-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        <p className="mt-2">Loading leagues...</p>
-      </div>
-    );
+  if (loading && leagues.length === 0) {
+    return <LoadingSpinner message="Loading leagues..." fullPage={true} />;
   }
 
-  if (error && !leagues.length) {
+  if (error && leagues.length === 0) {
     return (
-      <div className="alert alert-danger my-4" role="alert">
-        {error}
-      </div>
+      <ErrorMessage 
+        message={error.message} 
+        errorCode={error.code} 
+        onRetry={error.canRetry ? fetchLeagues : undefined} 
+      />
     );
   }
 
@@ -117,18 +126,16 @@ const TeamsPage = () => {
       </div>
 
       {error && (
-        <div className="alert alert-warning mb-4" role="alert">
-          {error}
-        </div>
+        <ErrorMessage 
+          message={error.message} 
+          errorCode={error.code} 
+          onRetry={error.canRetry ? () => fetchTeams(selectedLeague) : undefined}
+          small={true} 
+        />
       )}
 
       {loadingTeams ? (
-        <div className="text-center my-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <p className="mt-2">Loading teams...</p>
-        </div>
+        <LoadingSpinner message="Loading teams..." />
       ) : (
         <>
           {teams.length === 0 && !loadingTeams ? (

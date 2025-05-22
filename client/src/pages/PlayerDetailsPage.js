@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
+import { getErrorDetails } from '../utils/errorHandler';
 
 const PlayerDetailsPage = () => {
   const { id } = useParams();
@@ -9,40 +12,42 @@ const PlayerDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchPlayerDetails = async () => {
-      try {
-        setLoading(true);
-        console.log(`Fetching details for player ${id}...`);
-        
-        // Fetch player data from our API
-        const response = await axios.get(`/api/players/${id}`);
-        setPlayer(response.data);
-        
-        // Extract stats from player data if available
-        // API might not provide detailed stats so we'll use sample data for now
-        // In a future enhancement, we could collect this data from multiple endpoint calls
-        const playerStats = {
-          appearances: response.data.appearances || 0,
-          goals: response.data.goals || 0,
-          assists: response.data.assists || 0,
-          yellowCards: response.data.yellowCards || 0,
-          redCards: response.data.redCards || 0,
-          minutesPlayed: response.data.minutesPlayed || 0,
-          passAccuracy: response.data.passAccuracy || 0,
-          shotsOnTarget: response.data.shotsOnTarget || 0
-        };
-        
-        setStats(playerStats);
-        setLoading(false);
-        console.log('Player data loaded successfully');
-      } catch (err) {
-        setError('Failed to fetch player details. Please try again later.');
-        setLoading(false);
-        console.error(err);
-      }
-    };
+  const fetchPlayerDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log(`Fetching details for player ${id}...`);
+      
+      // Fetch player data from our API
+      const response = await axios.get(`/api/players/${id}`);
+      setPlayer(response.data);
+      
+      // Extract stats from player data if available
+      // API might not provide detailed stats so we'll use sample data for now
+      // In a future enhancement, we could collect this data from multiple endpoint calls
+      const playerStats = {
+        appearances: response.data.appearances || 0,
+        goals: response.data.goals || 0,
+        assists: response.data.assists || 0,
+        yellowCards: response.data.yellowCards || 0,
+        redCards: response.data.redCards || 0,
+        minutesPlayed: response.data.minutesPlayed || 0,
+        passAccuracy: response.data.passAccuracy || 0,
+        shotsOnTarget: response.data.shotsOnTarget || 0
+      };
+      
+      setStats(playerStats);
+      setLoading(false);
+      console.log('Player data loaded successfully');
+    } catch (err) {
+      const errorDetails = getErrorDetails(err, 'Failed to fetch player details.');
+      setError(errorDetails);
+      setLoading(false);
+      console.error('Player fetch error:', err);
+    }
+  };
 
+  useEffect(() => {
     fetchPlayerDetails();
   }, [id]);
 
@@ -60,29 +65,26 @@ const PlayerDetailsPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="text-center my-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        <p className="mt-2">Loading player details...</p>
-      </div>
-    );
+    return <LoadingSpinner message="Loading player details..." fullPage={true} />;
   }
 
   if (error) {
     return (
-      <div className="alert alert-danger my-4" role="alert">
-        {error}
-      </div>
+      <ErrorMessage 
+        message={error.message} 
+        errorCode={error.code} 
+        onRetry={error.canRetry ? fetchPlayerDetails : undefined} 
+      />
     );
   }
 
   if (!player) {
     return (
-      <div className="alert alert-warning my-4">
-        Player information not found. The player may not exist or there was an error retrieving the data.
-      </div>
+      <ErrorMessage 
+        message="Player information not found. The player may not exist or there was an error retrieving the data." 
+        errorCode="404"
+        small={false}
+      />
     );
   }
 

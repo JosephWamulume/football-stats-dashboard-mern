@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
+import { getErrorDetails } from '../utils/errorHandler';
 
 const TeamDetailsPage = () => {
   const { id } = useParams();
@@ -9,57 +12,85 @@ const TeamDetailsPage = () => {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [componentLoading, setComponentLoading] = useState({
+    team: true,
+    players: true,
+    matches: true
+  });
   const [activeTab, setActiveTab] = useState('squad');
 
-  useEffect(() => {
-    const fetchTeamDetails = async () => {
+  const fetchTeamData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setComponentLoading({ team: true, players: true, matches: true });
+      
       try {
-        setLoading(true);
-        
         // Fetch team details from our API
         const teamResponse = await axios.get(`/api/teams/${id}`);
         setTeam(teamResponse.data);
+        setComponentLoading(prev => ({ ...prev, team: false }));
         
         // If the team API response includes squad, use it
         if (teamResponse.data.squad && teamResponse.data.squad.length > 0) {
           setPlayers(teamResponse.data.squad);
+          setComponentLoading(prev => ({ ...prev, players: false }));
         } else {
-          // Otherwise make a separate request for players
-          const playersResponse = await axios.get(`/api/players/team/${id}`);
-          setPlayers(playersResponse.data || []);
+          try {
+            // Otherwise make a separate request for players
+            const playersResponse = await axios.get(`/api/players/team/${id}`);
+            setPlayers(playersResponse.data || []);
+          } catch (playerErr) {
+            console.error('Error fetching players:', playerErr);
+            // Just log the error but don't fail the entire page
+            setPlayers([]);
+          } finally {
+            setComponentLoading(prev => ({ ...prev, players: false }));
+          }
         }
-        
-        // Fetch team matches (recent & upcoming)
+      } catch (teamErr) {
+        const errorDetails = getErrorDetails(teamErr, 'Failed to fetch team details.');
+        setError(errorDetails);
+        setComponentLoading(prev => ({ ...prev, team: false, players: false }));
+        console.error('Team data fetch error:', teamErr);
+      }
+      
+      try {
+        // Fetch team matches (recent & upcoming) - do this separately so team data can still load if matches fail
         const matchesResponse = await axios.get(`/api/teams/${id}/matches`);
         setMatches(matchesResponse.data.matches || []);
-        
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch team details. Please try again later.');
-        setLoading(false);
-        console.error(err);
+      } catch (matchesErr) {
+        console.error('Error fetching matches:', matchesErr);
+        // Just log the error but don't fail the entire page
+        setMatches([]);
+      } finally {
+        setComponentLoading(prev => ({ ...prev, matches: false }));
       }
-    };
+      
+      setLoading(false);
+    } catch (err) {
+      const errorDetails = getErrorDetails(err, 'Failed to fetch team details.');
+      setError(errorDetails);
+      setLoading(false);
+      console.error('Overall team page error:', err);
+    }
+  };
 
-    fetchTeamDetails();
+  useEffect(() => {
+    fetchTeamData();
   }, [id]);
 
-  if (loading) {
-    return (
-      <div className="text-center my-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        <p className="mt-2">Loading team details...</p>
-      </div>
-    );
+  if (loading && !team) {
+    return <LoadingSpinner message="Loading team details..." fullPage={true} />;
   }
 
-  if (error) {
+  if (error && !team) {
     return (
-      <div className="alert alert-danger my-4" role="alert">
-        {error}
-      </div>
+      <ErrorMessage 
+        message={error.message} 
+        errorCode={error.code} 
+        onRetry={error.canRetry ? fetchTeamData : undefined} 
+      />
     );
   }
 
@@ -146,7 +177,9 @@ const TeamDetailsPage = () => {
                 <h4 className="mb-0">Squad</h4>
               </div>
               <div className="card-body">
-                {players.length > 0 ? (
+                {componentLoading.players ? (
+                  <LoadingSpinner message="Loading squad information..." small={true} />
+                ) : players.length > 0 ? (
                   <div className="table-responsive">
                     <table className="table table-striped table-hover">
                       <thead>
@@ -190,7 +223,9 @@ const TeamDetailsPage = () => {
                 <h4 className="mb-0">Recent & Upcoming Matches</h4>
               </div>
               <div className="card-body">
-                {matches.length > 0 ? (
+                {componentLoading.matches ? (
+                  <LoadingSpinner message="Loading match information..." small={true} />
+                ) : matches.length > 0 ? (
                   <div className="list-group">
                     {matches.map(match => (
                       <div key={match.id} className="list-group-item">
@@ -235,7 +270,9 @@ const TeamDetailsPage = () => {
                 <h4 className="mb-0">Team Statistics</h4>
               </div>
               <div className="card-body">
-                {matches.length > 0 ? (
+                {componentLoading.matches ? (
+                  <LoadingSpinner message="Loading team statistics..." small={true} />
+                ) : matches.length > 0 ? (
                   <>
                     <div className="row">
                       <div className="col-md-6 mb-4">
