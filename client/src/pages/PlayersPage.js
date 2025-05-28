@@ -226,41 +226,45 @@ const PlayersPage = () => {
       ) : (
         <>
           {players.length > 0 ? (
-            <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-              {players.map((player) => (
-                <div key={player.id} className="col">
-                  <div 
-                    className="card h-100 player-card" 
-                    onClick={() => handlePlayerClick(player.id)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className="card-body">
-                      <h5 className="card-title">{player.name}</h5>
-                      <div className="player-info">
-                        <p className="mb-1">
-                          <strong>Position:</strong> {player.position || 'N/A'}
-                        </p>
-                        {player.shirtNumber && (
-                          <p className="mb-1">
-                            <strong>Shirt Number:</strong> {player.shirtNumber}
-                          </p>
-                        )}
-                        <p className="mb-1">
-                          <strong>Nationality:</strong> {player.nationality || 'N/A'}
-                        </p>
-                        {player.dateOfBirth && (
-                          <p className="mb-0">
-                            <strong>Date of Birth:</strong> {new Date(player.dateOfBirth).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="card-footer bg-transparent">
-                      <small className="text-muted">Click to view detailed stats</small>
-                    </div>
-                  </div>
+            <div className="card">
+              <div className="card-header">
+                <h5 className="mb-0">Players</h5>
+              </div>
+              <div className="card-body">
+                <div className="table-responsive">
+                  <table className="table table-striped table-hover">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Position</th>
+                        <th>Nationality</th>
+                        <th>Date of Birth</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {players.map(player => (
+                        <tr key={player.id}>
+                          <td>{player.shirtNumber || '-'}</td>
+                          <td>{player.name}</td>
+                          <td>{player.position || 'Unknown'}</td>
+                          <td>{player.nationality || 'Unknown'}</td>
+                          <td>{player.dateOfBirth ? new Date(player.dateOfBirth).toLocaleDateString() : 'Unknown'}</td>
+                          <td>
+                            <button 
+                              onClick={() => handlePlayerClick(player.id)} 
+                              className="btn btn-sm btn-outline-primary"
+                            >
+                              Profile
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
+              </div>
             </div>
           ) : (
             selectedTeam && !error && !searching && (
