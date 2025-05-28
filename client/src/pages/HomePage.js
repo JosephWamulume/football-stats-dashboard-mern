@@ -61,7 +61,7 @@ const HomePage = () => {
               <p className="card-text">
                 Analyze player performance with comprehensive statistics and comparison tools.
               </p>
-              <Link to="/teams" className="btn btn-outline-primary">
+              <Link to="/players" className="btn btn-outline-primary">
                 Find Players
               </Link>
             </div>

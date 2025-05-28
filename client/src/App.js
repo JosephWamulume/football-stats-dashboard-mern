@@ -7,6 +7,7 @@ import LeaguesPage from './pages/LeaguesPage';
 import LeagueDetailsPage from './pages/LeagueDetailsPage';
 import TeamsPage from './pages/TeamsPage';
 import TeamDetailsPage from './pages/TeamDetailsPage';
+import PlayersPage from './pages/PlayersPage';
 import PlayerDetailsPage from './pages/PlayerDetailsPage';
 import './App.css';
 
@@ -22,6 +23,7 @@ function App() {
             <Route path="/leagues/:id" element={<LeagueDetailsPage />} />
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/teams/:id" element={<TeamDetailsPage />} />
+            <Route path="/players" element={<PlayersPage />} />
             <Route path="/players/:id" element={<PlayerDetailsPage />} />
           </Routes>
         </main>

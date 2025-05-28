@@ -37,6 +37,11 @@ const Navbar = () => {
                 Teams
               </NavLink>
             </li>
+            <li className="nav-item">
+              <NavLink className="nav-link" to="/players">
+                Players
+              </NavLink>
+            </li>
           </ul>
         </div>
       </div>
